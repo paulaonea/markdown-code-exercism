@@ -163,5 +163,22 @@ public class MarkdownTests
         var expected = "<h1>Start a list</h1><ul><li>Item 1</li><li>Item 2</li></ul><h2>End a list</h2>";
         Assert.Equal(expected, Markdown.Parse(markdown));
     }
+    
+    [Fact]
+    public void Nested_normal_bold_and_italic_text()
+    {
+        var markdown = "This will __be _italic_ text__ mixed";
+        var expected = "<p>This will <strong>be <em>italic</em> text</strong> mixed</p>";
+        Assert.Equal(expected, Markdown.Parse(markdown));
+    }
+    
+    [Fact]
+    public void Nested_normal_italic_and_strong_text()
+    {
+        var markdown = "This will _be __italic strong__ text_ mixed";
+        var expected = "<p>This will <em>be <strong>italic strong</strong> text</em> mixed</p>";
+        Assert.Equal(expected, Markdown.Parse(markdown));
+    }
+
 }
 }

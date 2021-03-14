@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace MarkdownSolutionUsingTokenizer
 {
@@ -99,7 +100,6 @@ public class Tokenizer
 
     private string ExtractFirstLineFromString()
     {
-        // var index = RemainingText.IndexOf(Environment.NewLine, StringComparison.CurrentCulture);
         var index = RemainingText.IndexOf('\n', StringComparison.CurrentCulture);
         var firstLine = index == -1
             ? RemainingText
@@ -108,93 +108,108 @@ public class Tokenizer
         return firstLine;
     }
 
-    public string InnerString { get; set; }
+    private string InnerString { get; set; }
     
     private List<Token> GenerateInnerTokens(string text)
     {
+        if (string.IsNullOrEmpty(text))
+        {
+            return null;
+        }
         InnerString = text;
 
         var tokens = new List<Token>();
         while (!string.IsNullOrEmpty(InnerString))
         {
-            var token = (InnerString[0] == '_')
-                ? TokenizeStrongOrItalic()
-                : TokeniseText();
-            tokens.Add(token);
+            var token = TokenizeStrongToken();
+            if (token != null)
+            {
+                tokens.Add(token);
+                continue;
+            }
+
+            token = TokenizeItalicToken();
+            if (token != null)
+            {
+                tokens.Add(token);
+                continue;
+            }
+            
+            token = TokeniseText();
+            if (token != null)
+            {
+                tokens.Add(token);
+            }
+
+        }
+
+        foreach (var token in tokens.Where(token => token.Type != TokenType.Text))
+        {
+            token.Tokens = GenerateInnerTokens(token.Text);
         }
 
         return tokens;
     }
+    
 
-    private Token TokenizeStrongOrItalic()
+    private Token TokenizeItalicToken()
     {
-        var token = (InnerString.Length >=2 && InnerString[1] == '_')
-            ? GenerateStrongToken()
-            : GenerateItalicToken();
+        // search for text like "_text_" at the beginning of the text
+        var match = Regex.Match(InnerString, "^((?<!_)_(?!_)).*((?<!_)_(?!_))");
+        if (match.Success)
+        {
+            InnerString = InnerString.Substring(match.Length);
+            return new Token 
+            {
+                Type = TokenType.Italic,
+                Text = match.Value.Substring(1,match.Length - 2),
+                RawText = match.Value,
+                Tokens = new List<Token>()
+            };
+        }
 
-        return token;
+        return null;
+
     }
 
-    private Token GenerateItalicToken()
+    private Token TokenizeStrongToken()
     {
-        var index = InnerString.Substring(1).IndexOf("_", StringComparison.CurrentCulture);
-        var currentTextItalicToken = index == -1
-            ? ""
-            : InnerString.Substring(1, index);
-        InnerString = InnerString.Substring(currentTextItalicToken.Length + 2);
-        
-        return new Token
+        // search for text like "__text__" at the beginning of the text
+        var match = Regex.Match(InnerString, "^(__).*(__)");
+        if (match.Success)
         {
-            Type = TokenType.Italic,
-            Text = currentTextItalicToken,
-            RawText = $"_{currentTextItalicToken}_",
-            Tokens = new List<Token>()
-        };
-    }
-
-    private Token GenerateStrongToken()
-    {
-        var index = InnerString.Substring(2).IndexOf("__", StringComparison.CurrentCulture);
-        var currentTextStrongToken = index == -1
-            ? ""
-            : InnerString.Substring(2, index);
-        InnerString = InnerString.Substring(currentTextStrongToken.Length + 4);
-        
-        return new Token
-        {
-            Type = TokenType.Strong,
-            Text = currentTextStrongToken,
-            RawText = $"__{currentTextStrongToken}__",
-            Tokens = new List<Token>()
-        };
+            InnerString = InnerString.Substring(match.Length);
+            return new Token
+            {
+                Type = TokenType.Strong,
+                Text = match.Value.Substring(2, match.Length - 4),
+                RawText = match.Value,
+                Tokens = new List<Token>()
+            };
+        }
+        return null;
         
     }
 
     private Token TokeniseText()
     {
-        var text = new StringBuilder();
-        while (!string.IsNullOrEmpty(InnerString) && InnerString[0] != '_')
+        // search for text until the first "_"
+        var match = Regex.Match(InnerString, "[^_]*");
+        if (match.Success)
         {
-            text.Append(InnerString[0]);
-            InnerString = InnerString.Substring(1);
+            InnerString = InnerString.Substring(match.Length);
+            return new Token
+            {
+                Type = TokenType.Text,
+                Text = match.Value,
+                RawText = match.Value,
+                Tokens = new List<Token>()
+            };
+            
         }
-        return new Token
-        {
-            Type = TokenType.Text,
-            Text = text.ToString(),
-            RawText = text.ToString(),
-            Tokens = new List<Token>()
-        };
-        
+
+        return null;
+
     }
-    
-    // TODO:
-    // this is not the best solution as it introduces a bug / does not deal correctly with the case the markdown
-    // includes a strong inside an italic  (_example __strong__ test_). 
-    
-    // Also, extracting inner tokens should be recursive, to extract all nested tokens.  Should iterate
-    // until there is no inner text left to tokenize.
-    
-    // should use Regex.
 }
 }
