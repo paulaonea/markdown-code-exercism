@@ -1,0 +1,13 @@
+﻿# Default ignored files
+/shelf/
+/workspace.xml
+# Rider ignored files
+/projectSettingsUpdater.xml
+/modules.xml
+/contentModel.xml
+/.idea.markdown-code-exercism.iml
+# Datasource local storage ignored files
+/../../../../../../:\projects\markdown-code-exercism\.idea\.idea.markdown-code-exercism\.idea/dataSources/
+/dataSources.local.xml
+# Editor-based HTTP Client requests
+/httpRequests/
